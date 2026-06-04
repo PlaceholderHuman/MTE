@@ -1,0 +1,237 @@
+#qe and fixed constants version 
+
+import numpy as np
+from scipy.integrate import quad
+import scipy.special as sp
+import scipy.integrate as integrate
+import matplotlib.pyplot as plt
+from scipy.constants import m_e, c, eV
+
+
+# --- Constants & Parameters ---
+fermi = 7.0               # EF
+phi = 2.7                 # Effective work function
+T_array = np.linspace(800, 1600, 800)  # Temperature array
+R = 0.5
+photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
+I = 6.241*(10**21)
+#changed from 1 kW/cm^2 to eV/(cm^2*s)
+A = 120.17
+boltz = 8.617333262145e-5
+charge = 1.60217663e-19
+
+# Lists to store the results. Each sub-list corresponds to a photon energy.
+mte = [[], [], []]
+j = [[], [], []]
+c1 = [-9.09e-3,3.77e-5,9.62e-5]
+c2 = [8.27e2,7.74e3,7.62e3]
+t0=1000
+#below are the RLD calculations
+jrld = [[],[],[]]
+mterld = []
+final = [[],[],[]]
+# --- Core Functions ---
+
+def fermi_dirac(E, ef, temp):
+    #The f(E;T) function
+    exponent = (E - ef) / (boltz * temp)
+    if exponent > 400: return 0.0  #can cause overflow, so we return 0 for large exponent
+    return 1.0 / (np.exp(exponent) + 1.0)
+
+def get_mu_min(E, ef, phi_eff, h_omega):
+    barrier = ef + phi_eff
+    total_energy = E + h_omega
+    
+    if total_energy <= barrier:
+        print("total<barrier")
+    val = np.sqrt(barrier / total_energy)
+    return val
+
+def integrand_numerator(E, ef, phi_eff, h_omega, temp):
+    #numerator for mte photo
+    f_initial = fermi_dirac(E, ef, temp)
+    f_final_inv = 1.0 - fermi_dirac(E + h_omega, ef, temp)
+    mu = get_mu_min(E, ef, phi_eff, h_omega)
+    geo_term = (2/3) - mu + (mu**3 / 3)
+    
+    return f_initial * f_final_inv * (E + h_omega) * geo_term
+
+def integrand_denominator(E, ef, phi_eff, h_omega, temp):
+    #denominator for mte photo
+    f_initial = fermi_dirac(E, ef, temp)
+    f_final_inv = 1.0 - fermi_dirac(E + h_omega, ef, temp)
+    mu = get_mu_min(E, ef, phi_eff, h_omega)
+    geo_term = 1.0 - mu
+    
+    return f_initial * f_final_inv * geo_term
+
+
+def int_potential(x):
+    #spence is dilog function
+    return sp.spence(1 + np.exp(x))
+
+
+# ========================================================================= # START
+
+def comp_fermi_initial(E, ef, temp):
+    return fermi_dirac(E, ef, temp)
+
+def comp_fermi_final_inv(E, ef, h_omega, temp):
+    return 1.0 - fermi_dirac(E + h_omega, ef, temp)
+
+def comp_geometric(E, ef, phi_eff, h_omega):
+    mu = get_mu_min(E, ef, phi_eff, h_omega)
+    return (2/3) - mu + (mu**3 / 3)
+
+def comp_denominator(E, ef, phi_eff, h_omega, temp):
+    mu = get_mu_min(E, ef, phi_eff, h_omega)
+    geo_term = 1.0 - mu
+    
+    return  geo_term
+# Choose a fixed state to examine
+test_temp = 1800
+test_hw = 4.66
+E_min_test = fermi + phi - test_hw
+
+# Create an energy array from E_min up to slightly past the Fermi level
+E_array = np.linspace(E_min_test, fermi + 10.0, 200)
+
+# Calculate component arrays
+y_f_initial = [comp_fermi_initial(E, fermi, test_temp) for E in E_array]
+y_f_final = [comp_fermi_final_inv(E, fermi, test_hw, test_temp) for E in E_array]
+y_geom = [comp_geometric(E, fermi, phi, test_hw) for E in E_array]
+y_demongeom = [comp_denominator(E, fermi, phi, test_hw, test_temp) for E in E_array]
+y_full_numerator = [integrand_numerator(E, fermi, phi, test_hw, test_temp) for E in E_array]
+y_full_denominator = [integrand_denominator(E, fermi, phi, test_hw, test_temp) for E in E_array]
+y_full_integrand = [a / b for a, b in zip(y_full_numerator, y_full_denominator)]
+# Plotting the components
+fig, axs = plt.subplots(3, 2, figsize=(12, 8))
+fig.suptitle(f'Integrand Components vs. Energy E (T={test_temp} K, ℏω={test_hw} eV)', fontsize=16)
+
+axs[0, 0].plot(E_array, y_f_initial)
+axs[0, 0].set_title('Initial State: f(E;T)')
+axs[0, 0].set_ylabel('Probability')
+
+axs[0, 1].plot(E_array, y_f_final)
+axs[0, 1].set_title('1 - f(E+ℏω;T) Term')
+
+axs[1, 0].plot(E_array, y_geom)
+axs[1, 0].set_title('Numerator Mu Term')
+axs[1, 0].set_ylabel('Value')
+axs[1, 0].set_xlabel('Energy E (eV)')
+
+# This is the most important plot to understand why the integral converges!
+axs[1, 1].plot(E_array, y_full_numerator, linewidth=2)
+axs[1, 1].set_title('Full Numerator Integrand')
+axs[1, 1].set_xlabel('Energy E (eV)')
+
+axs[2, 0].plot(E_array, y_demongeom, linewidth=2)
+axs[2, 0].set_title('Denominator Mu Term')
+axs[2, 0].set_xlabel('Energy E (eV)')
+
+axs[2, 1].plot(E_array, y_full_denominator, linewidth=2)
+axs[2, 1].set_title('Full Denominator Integrand')
+axs[2, 1].set_xlabel('Energy E (eV)')
+
+
+plt.tight_layout()
+plt.show()
+# # ========================================================================= # END
+
+
+for n, temp in enumerate(T_array):
+    mterld.append(boltz*temp)
+    # Iterate through the 3 photon energies
+    for index, hbar_omega in enumerate(photon_energies):
+        jrld[index].append(c2[index]*((temp/t0)**2)*np.exp(-(phi/(boltz*temp))))
+        #CALCULATING MTE photo process below
+        E_min = fermi + phi - hbar_omega
+        #separate into numerator and denominator
+        num, _ = quad(integrand_numerator, E_min, np.inf, args=(fermi, phi, hbar_omega, temp))
+        den, _ = quad(integrand_denominator, E_min, np.inf, args=(fermi, phi, hbar_omega, temp))
+        
+        mte_photo = num / den
+        mte[index].append(mte_photo)
+
+        #POSSIBLE ERROR THAT hbar omega < phi
+        #CALCULATING J PHOTO BELOW
+        num = int_potential(((boltz*temp)**(-1))*(hbar_omega-phi))
+        denom = int_potential(((boltz*temp)**(-1))*fermi)
+        placeholder = c1[index]*num/denom
+        j[index].append(placeholder)
+        final[index].append((j[index][n]*mte[index][n]+jrld[index][n]*mterld[n])/(j[index][n]+jrld[index][n]))
+
+plt.plot(T_array,final[0])
+plt.plot(T_array,final[1])
+plt.plot(T_array,final[2])
+plt.xlabel('Temperature (K)')
+plt.ylabel('eV')
+plt.title('Total MTE vs Temperature')
+gca = plt.gca()
+fontsize = 15
+gca.xaxis.label.set_size(fontsize)
+gca.yaxis.label.set_size(fontsize)
+gca.title.set_size(fontsize)
+plt.legend(['ℏω = 2.33 eV', 'ℏω = 3.49 eV', 'ℏω = 4.66 eV'])
+plt.show()
+
+qe0 = [x + y for x, y in zip(j[0], jrld[0])]
+qe1 = [x + y for x, y in zip(j[1], jrld[1])]
+qe2 = [x + y for x, y in zip(j[2], jrld[2])]
+plt.plot(T_array, qe0, label='ℏω = 2.33 eV')
+plt.plot(T_array, qe1, label='ℏω = 3.49 eV')
+plt.plot(T_array, qe2, label='ℏω = 4.66 eV')
+plt.legend()
+plt.xlabel('Temperature (K)')
+plt.ylabel('Current Density (A/cm^2)')
+plt.title('QE')
+plt.show()
+
+plt.plot(T_array,mte[0], label='ℏω = 2.33 eV')
+plt.plot(T_array, mte[1], label='ℏω = 3.49 eV')
+plt.plot(T_array, mte[2], label='ℏω = 4.66 eV')
+plt.plot(T_array,final[0])
+plt.plot(T_array,final[1])
+plt.plot(T_array,final[2])
+plt.xlim(1375,1400)
+plt.ylim(0,0.15)
+plt.legend()
+plt.xlabel('Temperature (K)')
+plt.ylabel('MTE (eV)')
+plt.title('MTEphoto and MTE final')
+plt.show()
+
+
+rms = 0.43
+mc2 = (m_e * c**2) / eV  # Approximately 510998.95 eV
+plt.plot(T_array,np.sqrt(np.array(final[0])*rms / mc2), label='ℏω = 2.33 eV')
+plt.plot(T_array,np.sqrt(np.array(final[1])*rms / mc2), label='ℏω = 3.49 eV')
+plt.plot(T_array,np.sqrt(np.array(final[2])*rms / mc2), label='ℏω = 4.66 eV')
+plt.legend()
+plt.xlabel('Temperature (K)')
+plt.ylabel('Emittance (mm)')
+plt.title('Emittance vs Temperature')
+plt.show()
+
+plt.plot(T_array,j[0], label='ℏω = 2.33 eV')
+plt.plot(T_array,j[1], label='ℏω = 3.49 eV')
+plt.plot(T_array,j[2], label='ℏω = 4.66 eV')
+plt.legend()
+plt.xlabel('Temperature (K)')
+plt.ylabel('Current Density (A/cm^2)')
+plt.title('Jphoto')
+plt.show()
+
+plt.semilogy(T_array, jrld[0], label='RLD Current Density')
+plt.semilogy(T_array, jrld[1], label='RLD Current Density')
+plt.semilogy(T_array, jrld[2], label='RLD Current Density')
+plt.xlabel('Temperature (K)')
+plt.ylabel('Current Density (A/cm^2)')
+plt.title('Jrld')
+plt.show()
+
+plt.plot(T_array, mterld, label='2.33 eV')
+plt.xlabel('Temperature (K)')
+plt.ylabel('MTE (eV)')
+plt.title('MTErld')
+plt.show()
