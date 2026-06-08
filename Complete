@@ -11,7 +11,7 @@ from scipy.constants import m_e, c, eV
 # --- Constants & Parameters ---
 fermi = 7.0               # EF
 phi = 2.7                 # Effective work function
-T_array = np.linspace(800, 1600, 800)  # Temperature array
+T_array = np.linspace(1200, 4000, 800)  # Temperature array
 R = 0.5
 photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
 I = 6.241*(10**21)
@@ -204,9 +204,9 @@ plt.show()
 
 rms = 0.43
 mc2 = (m_e * c**2) / eV  # Approximately 510998.95 eV
-plt.plot(T_array,np.sqrt(np.array(final[0])*rms / mc2), label='ℏω = 2.33 eV')
-plt.plot(T_array,np.sqrt(np.array(final[1])*rms / mc2), label='ℏω = 3.49 eV')
-plt.plot(T_array,np.sqrt(np.array(final[2])*rms / mc2), label='ℏω = 4.66 eV')
+plt.plot(T_array,np.sqrt(np.array(final[0])/mc2)*rms, label='ℏω = 2.33 eV')
+plt.plot(T_array,np.sqrt(np.array(final[1])/mc2)*rms, label='ℏω = 3.49 eV')
+plt.plot(T_array,np.sqrt(np.array(final[2])/mc2)*rms, label='ℏω = 4.66 eV')
 plt.legend()
 plt.xlabel('Temperature (K)')
 plt.ylabel('Emittance (mm)')
