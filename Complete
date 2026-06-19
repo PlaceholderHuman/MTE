@@ -11,25 +11,43 @@ from scipy.constants import m_e, c, eV
 # --- Constants & Parameters ---
 fermi = 7.0               # EF
 phi = 2.7                 # Effective work function
-T_array = np.linspace(600, 2000, 800)  # Temperature array
+
+#specify temperature range
+T_array = np.linspace(800, 2000, 800)  # Temperature array
 R = 0.5
 photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
 I = 6.241*(10**21)
-#changed from 1 kW/cm^2 to eV/(cm^2*s)
+#changed from 1 kW/cm^2 to eV/(cm^2*s) DO NOT USE THIS I VALUE
 A = 120.17
 boltz = 8.617333262145e-5
 charge = 1.60217663e-19
+#charge of an electron in Coulombs
 
-# Lists to store the results. Each sub-list corresponds to a photon energy.
+c1 = [-9.09e-3,3.77e-5,9.62e-5] #c1 defined as (1-R)
+c2 = [8.27e2,7.74e3,7.62e3] #c2 defined as t0^2 * A * h * omega / (q * I)
+#c1 c2 direct from the paper
+newc1 = [1/c2[i] * A * t0**2 * c1[i] for i in range(len(c2))]
+#newc1 is defined as q(1-R) I/(h * omega) everything that multiplies the potential functions in Jphoto
+#so flip c2 to get (q * I)/(h * omega) and remove the rest
+#then multiply by (1-R) which is c1
+
+t0=1000
+
+
 mte = [[], [], []]
 j = [[], [], []]
-c1 = [-9.09e-3,3.77e-5,9.62e-5]
-c2 = [8.27e2,7.74e3,7.62e3]
-t0=1000
-#below are the RLD calculations
 jrld = [[],[],[]]
 mterld = []
 final = [[],[],[]]
+
+
+qejrld = [[],[],[]] #uses c2
+qejphoto = [[],[],[]] #uses c1
+
+
+
+
+
 # --- Core Functions ---
 
 def fermi_dirac(E, ef, temp):
@@ -71,7 +89,7 @@ def int_potential(x):
     return sp.spence(1 + np.exp(x))
 
 
-# ========================================================================= # START
+# ========================================================================= # FIXED TEMP GRAPHS START
 
 def comp_fermi_initial(E, ef, temp):
     return fermi_dirac(E, ef, temp)
@@ -148,11 +166,14 @@ plt.show()
 # # ========================================================================= # END
 
 
+#calculate all below
 for n, temp in enumerate(T_array):
     mterld.append(boltz*temp)
     # Iterate through the 3 photon energies
     for index, hbar_omega in enumerate(photon_energies):
-        jrld[index].append(c2[index]*((temp/t0)**2)*np.exp(-(phi/(boltz*temp))))
+        jrld[index].append(A*(temp**2)*np.exp(-(phi/(boltz*temp))))
+        qejrld[index].append(c2[index]*((temp/t0)**2)*np.exp(-(phi/(boltz*temp))))
+
         #CALCULATING MTE photo process below
         E_min = fermi + phi - hbar_omega
         #separate into numerator and denominator
@@ -166,17 +187,20 @@ for n, temp in enumerate(T_array):
         #CALCULATING J PHOTO BELOW
         num = int_potential(((boltz*temp)**(-1))*(hbar_omega-phi))
         denom = int_potential(((boltz*temp)**(-1))*fermi)
-        placeholder = c1[index]*num/denom
-        j[index].append(placeholder)
+        j[index].append(newc1[index]*num/denom)
+        qejphoto[index].append(c1[index]*num/denom)
         final[index].append((j[index][n]*mte[index][n]+jrld[index][n]*mterld[n])/(j[index][n]+jrld[index][n]))
 
+
+
+#PLOT MTE total 
 plt.plot(T_array,final[0], label='ℏω = 2.33 eV')
 plt.plot(T_array,final[1], label='ℏω = 3.49 eV')
 plt.plot(T_array,final[2], label='ℏω = 4.66 eV')
 plt.xlabel('Temperature (K)')
 plt.plot(T_array,mterld, label='MTE RLD', linestyle='--')
 plt.ylabel('eV')
-plt.ylim(0.08,0.25)
+#plt.ylim(0.08,0.25)
 plt.title('Total MTE vs Temperature')
 gca = plt.gca()
 fontsize = 15
@@ -186,9 +210,11 @@ gca.title.set_size(fontsize)
 plt.legend()
 plt.show()
 
-qe0 = [x + y for x, y in zip(j[0], jrld[0])]
-qe1 = [x + y for x, y in zip(j[1], jrld[1])]
-qe2 = [x + y for x, y in zip(j[2], jrld[2])]
+
+#PLOT QE 
+qe0 = [x + y for x, y in zip(qejphoto[0], qejrld[0])]
+qe1 = [x + y for x, y in zip(qejphoto[1], qejrld[1])]
+qe2 = [x + y for x, y in zip(qejphoto[2], qejrld[2])]
 plt.semilogy(T_array, qe0, label='ℏω = 2.33 eV')
 plt.semilogy(T_array, qe1, label='ℏω = 3.49 eV')
 plt.semilogy(T_array, qe2, label='ℏω = 4.66 eV')
@@ -198,6 +224,8 @@ plt.ylabel('Current Density (A/cm^2)')
 plt.title('QE')
 plt.show()
 
+
+#PLOT MTE photo
 plt.plot(T_array,mte[0], label='ℏω = 2.33 eV')
 plt.plot(T_array, mte[1], label='ℏω = 3.49 eV')
 plt.plot(T_array, mte[2], label='ℏω = 4.66 eV')
@@ -213,12 +241,13 @@ plt.legend(fontsize=12)
 plt.show()
 
 
+#PLOT EMITTANCE
 rms = 0.43
 mc2 = (m_e * c**2) / eV  # Approximately 510998.95 eV
 plt.plot(T_array,np.sqrt(np.array(final[0])/mc2)*rms, label='ℏω = 2.33 eV')
 plt.plot(T_array,np.sqrt(np.array(final[1])/mc2)*rms, label='ℏω = 3.49 eV')
 plt.plot(T_array,np.sqrt(np.array(final[2])/mc2)*rms, label='ℏω = 4.66 eV')
-plt.ylim(top = 0.0003)
+#plt.ylim(top = 0.0003)
 plt.legend()
 plt.xlabel('Temperature (K)')
 plt.ylabel('Emittance (mm)')
@@ -230,6 +259,8 @@ gca.yaxis.label.set_size(fontsize)
 gca.title.set_size(fontsize)
 plt.show()
 
+
+#PLOT JPHOTO
 plt.plot(T_array,j[0], label='ℏω = 2.33 eV')
 plt.plot(T_array,j[1], label='ℏω = 3.49 eV')
 plt.plot(T_array,j[2], label='ℏω = 4.66 eV')
@@ -239,6 +270,7 @@ plt.ylabel('Current Density (A/cm^2)', fontsize=15)
 plt.title('Jphoto', fontsize=16)
 plt.show()
 
+#PLOT JRLD
 plt.semilogy(T_array, jrld[0], label='RLD Current Density')
 plt.semilogy(T_array, jrld[1], label='RLD Current Density')
 plt.semilogy(T_array, jrld[2], label='RLD Current Density')
@@ -247,7 +279,9 @@ plt.ylabel('Current Density (A/cm^2)', fontsize=15)
 plt.title('Jrld log scale', fontsize=16)
 plt.show()
 
+#PLOT MTE RLD
 plt.plot(T_array, mterld, label='2.33 eV')
+#mte no dependence for photon energy
 plt.xlabel('Temperature (K)')
 plt.ylabel('MTE (eV)')
 plt.title('MTErld')
