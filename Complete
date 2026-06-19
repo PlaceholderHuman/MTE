@@ -11,7 +11,7 @@ from scipy.constants import m_e, c, eV
 # --- Constants & Parameters ---
 fermi = 7.0               # EF
 phi = 2.7                 # Effective work function
-T_array = np.linspace(1200, 4000, 800)  # Temperature array
+T_array = np.linspace(600, 2000, 800)  # Temperature array
 R = 0.5
 photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
 I = 6.241*(10**21)
@@ -105,33 +105,42 @@ y_full_numerator = [integrand_numerator(E, fermi, phi, test_hw, test_temp) for E
 y_full_denominator = [integrand_denominator(E, fermi, phi, test_hw, test_temp) for E in E_array]
 y_full_integrand = [a / b for a, b in zip(y_full_numerator, y_full_denominator)]
 # Plotting the components
-fig, axs = plt.subplots(3, 2, figsize=(12, 8))
-fig.suptitle(f'Integrand Components vs. Energy E (T={test_temp} K, ℏω={test_hw} eV)', fontsize=16)
+title_size = 20
+label_size = 15
+tick_size = 15
+
+fig, axs = plt.subplots(3, 2, figsize=(14, 10))
+fig.suptitle(f'Integrand Components vs. Energy E (T={test_temp} K, ℏω={test_hw} eV)', fontsize=25)
 
 axs[0, 0].plot(E_array, y_f_initial)
-axs[0, 0].set_title('Initial State: f(E;T)')
-axs[0, 0].set_ylabel('Probability')
+axs[0, 0].set_title('Initial State: f(E;T)', fontsize=title_size)
+axs[0, 0].set_ylabel('Probability', fontsize=label_size)
+axs[0, 0].tick_params(axis='both', labelsize=tick_size)
+
+# Repeat passing `fontsize=title_size` to set_title, `fontsize=label_size` to set_xlabel/ylabel, 
+# and `.tick_params(labelsize=tick_size)` for all remaining subplots.
 
 axs[0, 1].plot(E_array, y_f_final)
-axs[0, 1].set_title('1 - f(E+ℏω;T) Term')
+axs[0, 1].set_title('1 - f(E+ℏω;T) Term', fontsize=title_size)
+axs[0, 1].set_ylabel('Probability', fontsize=label_size)
+axs[0, 1].tick_params(axis='both', labelsize=tick_size)
 
 axs[1, 0].plot(E_array, y_geom)
-axs[1, 0].set_title('Numerator Mu Term')
-axs[1, 0].set_ylabel('Value')
-axs[1, 0].set_xlabel('Energy E (eV)')
+axs[1, 0].set_title('Numerator Mu Term', fontsize=title_size)
+axs[1, 0].set_ylabel('Value', fontsize=label_size)
+axs[1, 0].set_xlabel('Energy E (eV)', fontsize=label_size)
 
-# This is the most important plot to understand why the integral converges!
 axs[1, 1].plot(E_array, y_full_numerator, linewidth=2)
-axs[1, 1].set_title('Full Numerator Integrand')
-axs[1, 1].set_xlabel('Energy E (eV)')
+axs[1, 1].set_title('Full Numerator Integrand', fontsize=title_size)
+axs[1, 1].set_xlabel('Energy E (eV)', fontsize=label_size)
 
 axs[2, 0].plot(E_array, y_demongeom, linewidth=2)
-axs[2, 0].set_title('Denominator Mu Term')
-axs[2, 0].set_xlabel('Energy E (eV)')
+axs[2, 0].set_title('Denominator Mu Term', fontsize=title_size)
+axs[2, 0].set_xlabel('Energy E (eV)', fontsize=label_size)
 
 axs[2, 1].plot(E_array, y_full_denominator, linewidth=2)
-axs[2, 1].set_title('Full Denominator Integrand')
-axs[2, 1].set_xlabel('Energy E (eV)')
+axs[2, 1].set_title('Full Denominator Integrand', fontsize=title_size)
+axs[2, 1].set_xlabel('Energy E (eV)', fontsize=label_size)
 
 
 plt.tight_layout()
@@ -161,26 +170,28 @@ for n, temp in enumerate(T_array):
         j[index].append(placeholder)
         final[index].append((j[index][n]*mte[index][n]+jrld[index][n]*mterld[n])/(j[index][n]+jrld[index][n]))
 
-plt.plot(T_array,final[0])
-plt.plot(T_array,final[1])
-plt.plot(T_array,final[2])
+plt.plot(T_array,final[0], label='ℏω = 2.33 eV')
+plt.plot(T_array,final[1], label='ℏω = 3.49 eV')
+plt.plot(T_array,final[2], label='ℏω = 4.66 eV')
 plt.xlabel('Temperature (K)')
+plt.plot(T_array,mterld, label='MTE RLD', linestyle='--')
 plt.ylabel('eV')
+plt.ylim(0.08,0.25)
 plt.title('Total MTE vs Temperature')
 gca = plt.gca()
 fontsize = 15
 gca.xaxis.label.set_size(fontsize)
 gca.yaxis.label.set_size(fontsize)
 gca.title.set_size(fontsize)
-plt.legend(['ℏω = 2.33 eV', 'ℏω = 3.49 eV', 'ℏω = 4.66 eV'])
+plt.legend()
 plt.show()
 
 qe0 = [x + y for x, y in zip(j[0], jrld[0])]
 qe1 = [x + y for x, y in zip(j[1], jrld[1])]
 qe2 = [x + y for x, y in zip(j[2], jrld[2])]
-plt.plot(T_array, qe0, label='ℏω = 2.33 eV')
-plt.plot(T_array, qe1, label='ℏω = 3.49 eV')
-plt.plot(T_array, qe2, label='ℏω = 4.66 eV')
+plt.semilogy(T_array, qe0, label='ℏω = 2.33 eV')
+plt.semilogy(T_array, qe1, label='ℏω = 3.49 eV')
+plt.semilogy(T_array, qe2, label='ℏω = 4.66 eV')
 plt.legend()
 plt.xlabel('Temperature (K)')
 plt.ylabel('Current Density (A/cm^2)')
@@ -190,15 +201,15 @@ plt.show()
 plt.plot(T_array,mte[0], label='ℏω = 2.33 eV')
 plt.plot(T_array, mte[1], label='ℏω = 3.49 eV')
 plt.plot(T_array, mte[2], label='ℏω = 4.66 eV')
-plt.plot(T_array,final[0])
-plt.plot(T_array,final[1])
-plt.plot(T_array,final[2])
-plt.xlim(1375,1400)
-plt.ylim(0,0.15)
-plt.legend()
-plt.xlabel('Temperature (K)')
-plt.ylabel('MTE (eV)')
-plt.title('MTEphoto and MTE final')
+# plt.plot(T_array,final[0])
+# plt.plot(T_array,final[1])
+# plt.plot(T_array,final[2])
+# plt.xlim(1375,1400)
+# plt.ylim(0,0.15)
+plt.xlabel('Temperature (K)', fontsize=15)
+plt.ylabel('MTE (eV)', fontsize=15)
+plt.title('MTEphoto', fontsize=16)
+plt.legend(fontsize=12)
 plt.show()
 
 
@@ -207,27 +218,33 @@ mc2 = (m_e * c**2) / eV  # Approximately 510998.95 eV
 plt.plot(T_array,np.sqrt(np.array(final[0])/mc2)*rms, label='ℏω = 2.33 eV')
 plt.plot(T_array,np.sqrt(np.array(final[1])/mc2)*rms, label='ℏω = 3.49 eV')
 plt.plot(T_array,np.sqrt(np.array(final[2])/mc2)*rms, label='ℏω = 4.66 eV')
+plt.ylim(top = 0.0003)
 plt.legend()
 plt.xlabel('Temperature (K)')
 plt.ylabel('Emittance (mm)')
 plt.title('Emittance vs Temperature')
+gca = plt.gca()
+fontsize = 15
+gca.xaxis.label.set_size(fontsize)
+gca.yaxis.label.set_size(fontsize)
+gca.title.set_size(fontsize)
 plt.show()
 
 plt.plot(T_array,j[0], label='ℏω = 2.33 eV')
 plt.plot(T_array,j[1], label='ℏω = 3.49 eV')
 plt.plot(T_array,j[2], label='ℏω = 4.66 eV')
 plt.legend()
-plt.xlabel('Temperature (K)')
-plt.ylabel('Current Density (A/cm^2)')
-plt.title('Jphoto')
+plt.xlabel('Temperature (K)', fontsize=15)
+plt.ylabel('Current Density (A/cm^2)', fontsize=15)
+plt.title('Jphoto', fontsize=16)
 plt.show()
 
 plt.semilogy(T_array, jrld[0], label='RLD Current Density')
 plt.semilogy(T_array, jrld[1], label='RLD Current Density')
 plt.semilogy(T_array, jrld[2], label='RLD Current Density')
-plt.xlabel('Temperature (K)')
-plt.ylabel('Current Density (A/cm^2)')
-plt.title('Jrld')
+plt.xlabel('Temperature (K)', fontsize=15)
+plt.ylabel('Current Density (A/cm^2)', fontsize=15)
+plt.title('Jrld log scale', fontsize=16)
 plt.show()
 
 plt.plot(T_array, mterld, label='2.33 eV')
