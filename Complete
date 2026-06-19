@@ -13,7 +13,7 @@ fermi = 7.0               # EF
 phi = 2.7                 # Effective work function
 
 #specify temperature range
-T_array = np.linspace(800, 2000, 800)  # Temperature array
+T_array = np.linspace(900, 1500, 800)  # Temperature array
 R = 0.5
 photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
 I = 6.241*(10**21)
@@ -219,6 +219,7 @@ plt.semilogy(T_array, qe0, label='ℏω = 2.33 eV')
 plt.semilogy(T_array, qe1, label='ℏω = 3.49 eV')
 plt.semilogy(T_array, qe2, label='ℏω = 4.66 eV')
 plt.legend()
+plt.ylim(1e-8, 1e-4)
 plt.xlabel('Temperature (K)')
 plt.ylabel('Current Density (A/cm^2)')
 plt.title('QE')
