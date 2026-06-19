@@ -22,6 +22,7 @@ A = 120.17
 boltz = 8.617333262145e-5
 charge = 1.60217663e-19
 #charge of an electron in Coulombs
+t0=1000
 
 c1 = [-9.09e-3,3.77e-5,9.62e-5] #c1 defined as (1-R)
 c2 = [8.27e2,7.74e3,7.62e3] #c2 defined as t0^2 * A * h * omega / (q * I)
@@ -31,7 +32,6 @@ newc1 = [1/c2[i] * A * t0**2 * c1[i] for i in range(len(c2))]
 #so flip c2 to get (q * I)/(h * omega) and remove the rest
 #then multiply by (1-R) which is c1
 
-t0=1000
 
 
 mte = [[], [], []]
