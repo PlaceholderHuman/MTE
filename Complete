@@ -1,5 +1,5 @@
 #qe and fixed constants version 
-
+import sys
 import numpy as np
 from scipy.integrate import quad
 import scipy.special as sp
@@ -13,7 +13,7 @@ fermi = 7.0               # EF
 phi = 2.7                 # Effective work function
 
 #specify temperature range
-T_array = np.linspace(900, 1500, 800)  # Temperature array
+T_array = np.linspace(0.1, 1200, 800)  # Temperature array
 R = 0.5
 photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
 I = 6.241*(10**21)
@@ -79,14 +79,20 @@ def integrand_denominator(E, ef, phi_eff, h_omega, temp):
     f_initial = fermi_dirac(E, ef, temp)
     f_final_inv = 1.0 - fermi_dirac(E + h_omega, ef, temp)
     mu = get_mu_min(E, ef, phi_eff, h_omega)
+    #the mu term becomes one and the geometric result is 0 which multiplies everything
     geo_term = 1.0 - mu
-    
-    return f_initial * f_final_inv * geo_term
+    result = f_initial * f_final_inv * geo_term
+    return max(0.0, result)
 
 
 def int_potential(x):
-    #spence is dilog function
-    return sp.spence(1 + np.exp(x))
+    # np.exp overflows around x = 709. 
+    # For large x, use the mathematical asymptotic limit.
+    if x > 700:
+        return (x**2) / 2.0 + (np.pi**2) / 6.0
+    return -sp.spence(1 + np.exp(x))
+#Needs to be negative specnce as the condition for return is negative, and everywhere else would be canceled out
+
 
 
 # ========================================================================= # FIXED TEMP GRAPHS START
@@ -180,7 +186,10 @@ for n, temp in enumerate(T_array):
         num, _ = quad(integrand_numerator, E_min, np.inf, args=(fermi, phi, hbar_omega, temp))
         den, _ = quad(integrand_denominator, E_min, np.inf, args=(fermi, phi, hbar_omega, temp))
         
-        mte_photo = num / den
+        if den <= 0:
+            mte_photo = 0.0 
+        else:
+            mte_photo = num / den
         mte[index].append(mte_photo)
 
         #POSSIBLE ERROR THAT hbar omega < phi
@@ -200,7 +209,8 @@ plt.plot(T_array,final[2], label='ℏω = 4.66 eV')
 plt.xlabel('Temperature (K)')
 plt.plot(T_array,mterld, label='MTE RLD', linestyle='--')
 plt.ylabel('eV')
-#plt.ylim(0.08,0.25)
+#plt.xlim(114.55,114.6)
+#plt.ylim(0.264,0.265)
 plt.title('Total MTE vs Temperature')
 gca = plt.gca()
 fontsize = 15
@@ -233,8 +243,6 @@ plt.plot(T_array, mte[2], label='ℏω = 4.66 eV')
 # plt.plot(T_array,final[0])
 # plt.plot(T_array,final[1])
 # plt.plot(T_array,final[2])
-# plt.xlim(1375,1400)
-# plt.ylim(0,0.15)
 plt.xlabel('Temperature (K)', fontsize=15)
 plt.ylabel('MTE (eV)', fontsize=15)
 plt.title('MTEphoto', fontsize=16)
