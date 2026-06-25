@@ -13,7 +13,7 @@ fermi = 7.0               # EF
 phi = 2.7                 # Effective work function
 
 #specify temperature range
-T_array = np.linspace(0.1, 1200, 800)  # Temperature array
+T_array = np.linspace(0.1, 3000, 1000)  # Temperature array
 R = 0.5
 photon_energies = [2.33, 3.49, 4.66]   # Your 'e' array
 I = 6.241*(10**21)
